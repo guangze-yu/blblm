@@ -4,7 +4,7 @@
 \alias{blbgm}
 \title{Construct the logistic regression with bootstraps and each kind of parament might used.}
 \usage{
-blbgm(formula, data, m = 10, B = 5000, cl = 1)
+blbgm(formula, data, m = 10, B = 5000, cl = 1, family = gaussian)
 }
 \arguments{
 \item{formula}{an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.}
@@ -16,6 +16,8 @@ blbgm(formula, data, m = 10, B = 5000, cl = 1)
 \item{B}{the number of replications}
 
 \item{cl}{the number of cores that user want to use.}
+
+\item{family}{family parameter}
 }
 \description{
 Construct the logistic regression with bootstraps and each kind of parament might used.

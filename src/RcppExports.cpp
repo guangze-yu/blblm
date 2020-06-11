@@ -20,11 +20,8 @@ BEGIN_RCPP
 END_RCPP
 }
 
-RcppExport SEXP lm_eac_boot(SEXP);
-
 static const R_CallMethodDef CallEntries[] = {
     {"_blblm_lm_each_boot1", (DL_FUNC) &_blblm_lm_each_boot1, 3},
-    {"lm_eac_boot", (DL_FUNC) &lm_eac_boot, 1},
     {NULL, NULL, 0}
 };
 

@@ -4,12 +4,14 @@
 \alias{gm_each_boot}
 \title{compute the logistic regression estimates for a blb dataset}
 \usage{
-gm_each_boot(formula, data, n)
+gm_each_boot(formula, data, family, n)
 }
 \arguments{
 \item{formula}{an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.}
 
 \item{data}{an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.}
+
+\item{family}{the model family}
 
 \item{n}{the number of random vectors to draw}
 }

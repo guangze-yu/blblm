@@ -16,7 +16,6 @@ Imports:
     purrr,
     magrittr,
     Rcpp,
-    RcppArmadillo,
     parallel,
     utils,
     tidyverse,
@@ -24,7 +23,9 @@ Imports:
     furrr,
     generics,
     vroom,
-    readr
+    readr,
+    RcppArmadillo,
+    bench
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.0
 LinkingTo: 

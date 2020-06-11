@@ -7,6 +7,7 @@
 #' @import generics
 #' @import vroom
 #' @import readr
+#' @import bench
 #' @aliases NULL
 #' @importFrom magrittr %>%
 #' @details
@@ -21,11 +22,10 @@ utils::globalVariables(c("."))
 #' Construct the linear regression with bootstraps and each kind of parament might used.
 #'
 #' @param formula an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.
-#'
-#' @param data an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
-#' @param m m parts user want to split the data
-#' @param B the number of replications
-#' @param cl the number of cores that user want to use.
+#' @param data    an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
+#' @param m       m parts user want to split the data
+#' @param B       the number of replications
+#' @param cl      the number of cores that user want to use.
 #' @export
 
 
@@ -49,7 +49,7 @@ blblm <- function(formula, data, m = 10, B = 5000,cl=1) {
 #' split data into m parts of approximated equal sizes
 #'
 #' @param data an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
-#' @param m m parts user want to split the data
+#' @param m    m parts user want to split the data
 
 split_data <- function(data, m) {
   idx <- sample.int(m, nrow(data), replace = TRUE)
@@ -59,35 +59,45 @@ split_data <- function(data, m) {
 #' compute the estimates
 #'
 #' @param formula an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.
-#' @param data an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
-#' @param n the number of random vectors to draw
-#' @param B the number of replications
+#' @param data    an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
+#' @param n       the number of random vectors to draw
+#' @param B       the number of replications
 
 lm_each_subsample <- function(formula, data, n, B) {
   replicate(B, lm_each_boot(formula, data, n), simplify = FALSE)
 }
 
 
-#' estimate the regression estimates based on given the number of repetitions
+#' compute the linear  estimates for a blb dataset
 #'
 #' @param formula an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.
-#' @param data an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
-#' @param n the number of random vectors to draw
+#' @param data    an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
+#' @param n       the number of random vectors to draw
 
-lm1 <- function(formula, data, n) {
+
+lm_each_boot <- function(formula, data, n) {
+  freqs <- rmultinom(1, n, rep(1, nrow(data)))
+  lm1(formula, data, freqs)
+}
+
+#' estimate the regression estimates based on given the number of repetitions
+#' @param freqs   how many multinomial probabilities exists
+#' @param formula an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.
+#' @param data    an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
+
+
+lm1 <- function(formula, data, freqs) {
   # drop the original closure of formula,
   # otherwise the formula will pick a wront variable from the global scope.
   environment(formula) <- environment()
-  freqs <- rmultinom(1, n, rep(1, nrow(data)))
   fit <- lm(formula, data, weights = freqs)
   list(coef = coef(fit), sigma = blbsigma(fit))
 }
 
 
-
 #' compute sigma from fit
 #'
-#' @param fit formula expression
+#' @param fit     formula expression
 blbsigma <- function(fit) {
   p <- fit$rank
   y <- model.extract(fit$model, "response")
@@ -98,9 +108,8 @@ blbsigma <- function(fit) {
 
 #' Get the expression of formula
 #'
-#' @param x linear regression formula
-#' @param ... further arguments passed from or to other methods
-#' @method print blblm
+#' @param x       linear regression formula
+#' @param ...     further arguments passed from or to other methods
 
 print.blblm <- function(x, ...) {
   cat("blblm model:", capture.output(x$out))
@@ -109,13 +118,13 @@ print.blblm <- function(x, ...) {
 
 #' Get the confidence interval of parament
 #'
-#' @param object estimated object
-#'
+#' @param object     estimated object
 #' @param confidence Whether return the confidence interval of sigma
-#' @param level alpha value
-#' @param ... further arguments passed from or to other methods
+#' @param level      alpha value
+#' @param ...        further arguments passed from or to other methods
 #' @export
-#' @method sigma blblm
+
+
 sigma.blblm <- function(object, confidence = FALSE, level = 0.95, ...) {
   est <- object$estimates
   sigma <- mean(map_dbl(est, ~ mean(map_dbl(., "sigma"))))
@@ -133,8 +142,7 @@ sigma.blblm <- function(object, confidence = FALSE, level = 0.95, ...) {
 #' Get the coefficient of linear regression
 #'
 #' @param object estimated object
-#'
-#' @param ... further arguments passed from or to other methods
+#' @param ...    further arguments passed from or to other methods
 #'
 #' @export
 #' @method coef blblm
@@ -146,13 +154,12 @@ coef.blblm <- function(object, ...) {
 #' Get the confidence interval of parament of linear regression
 #'
 #' @param object The data user defined.
-#'
-#' @param parm The initial string
-#' @param level The 95% confidence interval
-#' @param ... further arguments passed from or to other methods
-#'
+#' @param parm   The initial string
+#' @param level  The 95% confidence interval
+#' @param ...    further arguments passed from or to other methods
 #' @export
-#' @method confint blblm
+
+
 confint.blblm <- function(object, parm = NULL, level = 0.95, ...) {
   if (is.null(parm)) {
     parm <- attr(terms(fit$call), "term.labels")
@@ -171,15 +178,13 @@ confint.blblm <- function(object, parm = NULL, level = 0.95, ...) {
 
 #' Based on the previous dataset to predict the new data
 #'
-#' @param object estimated object
-#'
-#' @param new_data the new data wanted to predict
+#' @param object     estimated object
+#' @param new_data   the new data wanted to predict
 #' @param confidence confidence interval
-#' @param level alpha value
-#' @param ... further arguments passed from or to other methods
+#' @param level      alpha value
+#' @param ...        further arguments passed from or to other methods
 #'
 #' @export
-#' @method predict blblm
 predict.blblm <- function(object, new_data, confidence = FALSE, level = 0.95, ...) {
   est <- object$estimates
   X <- model.matrix(reformulate(attr(terms(object$formula), "term.labels")), new_data)
@@ -195,7 +200,7 @@ predict.blblm <- function(object, new_data, confidence = FALSE, level = 0.95, ..
 
 #' Get the confidence interval of mean
 #'
-#' @param x The dataset
+#' @param x     The dataset
 #' @param level The alpha value
 mean_lwr_upr <- function(x, level = 0.95) {
   alpha <- 1 - level
@@ -204,8 +209,8 @@ mean_lwr_upr <- function(x, level = 0.95) {
 
 #' Get the mean
 #'
-#' @param .x A list or atomic vector.
-#' @param .f A function,formula or vector
+#' @param .x  A list or atomic vector.
+#' @param .f  A function,formula or vector
 #' @param ... further arguments passed from or to other methods
 map_mean <- function(.x, .f,...) {
   (map(.x, .f,...) %>% reduce(`+`)) / length(.x)
@@ -213,8 +218,8 @@ map_mean <- function(.x, .f,...) {
 
 #' Columnbind
 #'
-#' @param .x the dataset
-#' @param .f A function,formula or vector
+#' @param .x  the dataset
+#' @param .f  A function,formula or vector
 #' @param ... further arguments passed from or to other methods
 map_cbind <- function(.x, .f,...) {
   map(.x, .f,...) %>% reduce(cbind)
@@ -222,47 +227,12 @@ map_cbind <- function(.x, .f,...) {
 
 #' Rowbind
 #'
-#' @param .x the dataset
-#' @param .f A function,formula or vector
+#' @param .x  the dataset
+#' @param .f  A function,formula or vector
 #' @param ... further arguments passed from or to other methods
+
 map_rbind <- function(.x, .f,...) {
   map(.x,.f,...) %>% reduce(rbind)
-}
-
-
-#' estimate the logistic estimates based on given number of repetitions
-#'
-#' @param formula an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.
-#' @param data an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
-#' @param freqs how many multinomial probabilities exists
-#'
-gm<- function(formula,data,freqs){
-  environment(formula)<- environment()
-  fit<- glm(formula,family = gaussian,data,weights=freqs)
-  list(coef = coef(fit), sigma=fit$residuals)
-}
-
-#' compute the logistic regression estimates for a blb dataset
-#'
-#' @param formula an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.
-#' @param data an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
-#' @param n the number of random vectors to draw
-
-gm_each_boot <- function(formula, data, n) {
-  freqs <- rmultinom(1, n, rep(1, nrow(data)))
-  gm(formula, data, freqs)
-}
-
-#'
-#'
-#' compute the estimates for logistic regression
-#'
-#' @param formula an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.
-#' @param data an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
-#' @param n the number of random vectors to draw
-#' @param B the number of replications
-gm_each_subsample <- function(formula, data, n, B) {
-  replicate(B, gm_each_boot(formula, data, n), simplify = FALSE)
 }
 
 
@@ -270,13 +240,14 @@ gm_each_subsample <- function(formula, data, n, B) {
 #'
 #' @param formula an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.
 #'
-#' @param data an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
-#' @param m m parts user want to split the data
-#' @param B the number of replications
-#' @param cl the number of cores that user want to use.
+#' @param data    an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
+#' @param m       m parts user want to split the data
+#' @param B       the number of replications
+#' @param cl      the number of cores that user want to use.
+#' @param family  family parameter
 #' @export
 
-blbgm <-function(formula, data, m = 10, B = 5000,cl=1) {
+blbgm <-function(formula, data, m = 10, B = 5000,cl=1,family= gaussian) {
   if (class(data) == "data.frame"){
     data_list <- split_data(data, m)
     n=nrow(data)
@@ -292,3 +263,137 @@ blbgm <-function(formula, data, m = 10, B = 5000,cl=1) {
   class(res) <- "blbgm"
   invisible(res)
 }
+
+
+#' compute the estimates for logistic regression
+#'
+#' @param formula an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.
+#' @param data    an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
+#' @param n       the number of random vectors to draw
+#' @param B       the number of replications
+#' @param family  the model family
+
+gm_each_subsample <- function(formula, data, n, B,family) {
+  replicate(B, gm_each_boot(formula, data, family,n), simplify = FALSE)
+}
+
+#' compute the logistic regression estimates for a blb dataset
+#'
+#' @param formula an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.
+#' @param data    an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
+#' @param n       the number of random vectors to draw
+#' @param family  the model family
+
+gm_each_boot <- function(formula, data,family, n) {
+  freqs <- rmultinom(1, n, rep(1, nrow(data)))
+  gm1(formula, data, freqs)
+}
+
+#' estimate the logistic estimates based on given number of repetitions
+#'
+#' @param formula an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.
+#' @param data    an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.
+#' @param freqs   how many multinomial probabilities exists
+#' @param family  the model family
+
+gm1<- function(formula,data,freqs,family){
+  environment(formula)<- environment()
+  fit<- glm(formula,family = gaussian,data,weights=freqs)
+  list(coef = coef(fit),sigma = blbsigma(fit))
+}
+
+#' Get the expression of formula
+#'
+#' @param x       linear regression formula
+#' @param ...     further arguments passed from or to other methods
+
+print.blbgm <- function(x, ...) {
+  cat("blblm model:", capture.output(x$out))
+  cat("\n")
+}
+
+
+#' Get the confidence interval of parament
+#'
+#' @param object     estimated object
+#' @param confidence Whether return the confidence interval of sigma
+#' @param level      alpha value
+#' @param ...        further arguments passed from or to other methods
+#' @export
+sigma.blbgm <- function(object, confidence = FALSE, level = 0.95, ...) {
+  est <- object$estimates
+  sigma <- mean(map_dbl(est, ~ mean(map_dbl(., "sigma"))))
+  if (confidence) {
+    alpha <- 1 - 0.95
+    limits <- est %>%
+      map_mean(~ quantile(map_dbl(., "sigma"), c(alpha / 2, 1 - alpha / 2))) %>%
+      set_names(NULL)
+    return(c(sigma = sigma, lwr = limits[1], upr = limits[2]))
+  } else {
+    return(sigma)
+  }
+}
+
+#' Get the confidence interval of parament of logistic regression
+#'
+#' @param object The data user defined.
+#' @param parm   The initial string
+#' @param level  The 95% confidence interval
+#' @param ...    further arguments passed from or to other methods
+#' @export
+
+confint.blbgm <- function(object, parm = NULL, level = 0.95, ...) {
+  if (is.null(parm)) {
+    parm <- attr(terms(fit$call), "term.labels")
+  }
+  alpha <- 1 - level
+  est <- object$estimates
+  out <- map_rbind(parm, function(p) {
+    map_mean(est, ~ map_dbl(., list("coef", p)) %>% quantile(c(alpha / 2, 1 - alpha / 2)))
+  })
+  if (is.vector(out)) {
+    out <- as.matrix(t(out))
+  }
+  dimnames(out)[[1]] <- parm
+  out
+}
+
+
+#' Based on the previous dataset to predict the new data
+#'
+#' @param object     estimated object
+#' @param new_data   the new data wanted to predict
+#' @param confidence confidence interval
+#' @param level      alpha value
+#' @param ...        further arguments passed from or to other methods
+#'
+#' @export
+predict.blbgm <- function(object, new_data, confidence = FALSE, level = 0.95, ...) {
+  est <- object$estimates
+  X <- model.matrix(reformulate(attr(terms(object$formula), "term.labels")), new_data)
+  if (confidence) {
+    map_mean(est, ~ map_cbind(., ~ X %*% .$coef) %>%
+               apply(1, mean_lwr_upr, level = level) %>%
+               t())
+  } else {
+    map_mean(est, ~ map_cbind(., ~ X %*% .$coef) %>% rowMeans())
+  }
+}
+
+#' coefficeint of logistic regression model
+#' @export
+#' @method coef blbglm
+#' @param object estimated object
+#' @param ...    further arguments passed from or to other methods
+coef.blbglm <- function(object, ...) {
+  est <- object$estimates
+  map_mean(est, ~ map_cbind(., "coef") %>% rowMeans())
+}
+
+
+
+
+
+
+
+

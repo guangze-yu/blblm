@@ -4,7 +4,7 @@
 \alias{gm_each_subsample}
 \title{compute the estimates for logistic regression}
 \usage{
-gm_each_subsample(formula, data, n, B)
+gm_each_subsample(formula, data, n, B, family)
 }
 \arguments{
 \item{formula}{an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.}
@@ -14,6 +14,8 @@ gm_each_subsample(formula, data, n, B)
 \item{n}{the number of random vectors to draw}
 
 \item{B}{the number of replications}
+
+\item{family}{the model family}
 }
 \description{
 compute the estimates for logistic regression

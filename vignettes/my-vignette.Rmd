@@ -1,5 +1,5 @@
 ---
-title: "Little Bootstraps for Linear Regression Model"
+title: "Little Bootstraps Package"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{my-vignette}
@@ -14,6 +14,83 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r setup}
+```{r setup,message=FALSE,warning=FALSE}
 library(blblm)
 ```
+
+# Overview
+
+This vignette compares simple linear regression functions to our advanced linear regression function with bootstraps. This helps those familiar with base R understand better what linear regression does, and shows more possibility using linear regression model. We’ll start with a rough overview of the major differences.
+
+# Boostraps
+
+Boostraps is aflexible and powerful statistical tool that can be used to quantify the uncertainty associated with a given estimator or statistical learning method. The boostraps allows us to use a computer to mimic the process of obtaining new data sets, so we can estimate the variablility of our estimate without generating additional samples. 
+
+# The major Improvement
+
+Based on the 1.0 blblm package, we did some major improvement to improve the performance of this little package. We talked from the below aspects.
+
+Firstly,in the previous implementation, only one CPU is used in the algorithm. It is quite slow if users want to treat a large dataset. In the current implementation, we intinlize the CPU number into 1. If users don't change the argument `cl` , they will continue to use single CPU. If users change the argument `cl` to other number, they will speed up the analysis process. Moreover, the result can shown in the below chart.
+
+```{r}
+fit <- blblm(mpg ~ wt * hp, data = mtcars, m = 3, B = 10)
+fit2 <- blblm(mpg ~ wt * hp, data = mtcars, m = 3, B = 10, cl = 4)
+```
+
+Secondly, in the previous implementation, the `blblm` function only accept the dataframe as the input argument. It is quite limted. In the current implementation, we allow users to specify a list of file of datasets rather than loading the whole dataset in the main process then distribute to the workers. Each file would be then loaded in the workers to minimize memory usage. If user input the list of list of files, we will read them one by one. If user only input one dataframe, we will continue to spilt the dataset as the traditional boostrap process. 
+
+Thirdly, in the previous implementation, we use mainly R language to construct our package. We explore more probability to write our lm_each_boot function in Rcpp format, which can help to speed up for a little bit because C++ has more advantages to deal with repeat. The source code can be found in `lm_each_boot1`. 
+
+Fourthly, we explore another model generalized linear Modelings. It has the same setting as the linear model. Further information can be checked `?blbgm`. 
+
+```{r}
+fit<-blbgm(mpg ~ wt * hp, data = mtcars, m = 3, B = 10)
+fit2 <- blbgm(mpg ~ wt * hp, data = mtcars, m = 3, B = 10,cl=4)
+```
+
+
+# Major function
+
+As mentioned before, `blbgm` and `blblm` helped us to construct the linear regression model and generalized linear model.
+
+```{r}
+fit <- blblm(mpg ~ wt * hp, data = mtcars, m = 3, B = 10)
+fit2<-blbgm(mpg ~ wt * hp, data = mtcars, m = 3, B = 10,family = gaussian)
+```
+
+The coefficient can be called with `coef`. It will return coefficient of models
+
+```{r}
+coef(fit)
+coef(fit2)
+```
+
+
+The `confint` will return the confidence interval of coefficient.
+
+```{r}
+confint(fit, c("wt", "hp"))
+confint(fit2, c("wt", "hp"))
+```
+
+The `sigma` will return the standard error. 
+
+```{r}
+sigma(fit)
+sigma(fit2)
+```
+
+The `predict` will return predict value of fit model. 
+
+```{r}
+predict(fit, data.frame(wt = c(2.5, 3), hp = c(150, 170)))
+predict(fit2, data.frame(wt = c(2.5, 3), hp = c(150, 170)))
+```
+
+The `predict` function with the argument `confidence =TRUE` will return a interval of prediction value. 
+
+```{r}
+predict(fit, data.frame(wt = c(2.5, 3), hp = c(150, 170)), confidence = TRUE)
+predict(fit2, data.frame(wt = c(2.5, 3), hp = c(150, 170)), confidence = TRUE)
+```
+
