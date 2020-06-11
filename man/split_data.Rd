@@ -6,6 +6,11 @@
 \usage{
 split_data(data, m)
 }
+\arguments{
+\item{data}{an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.}
+
+\item{m}{m parts user want to split the data}
+}
 \description{
 split data into m parts of approximated equal sizes
 }

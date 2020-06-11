@@ -6,6 +6,9 @@
 \usage{
 blbsigma(fit)
 }
+\arguments{
+\item{fit}{formula expression}
+}
 \description{
 compute sigma from fit
 }

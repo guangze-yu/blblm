@@ -6,6 +6,15 @@
 \usage{
 lm_each_subsample(formula, data, n, B)
 }
+\arguments{
+\item{formula}{an object of class "formula" (or one that can be coerced to that class): a symbolic description of the model to be fitted.}
+
+\item{data}{an optional data frame, list or environment (or object coercible by as.data.frame to a data frame) containing the variables in the model.}
+
+\item{n}{the number of random vectors to draw}
+
+\item{B}{the number of replications}
+}
 \description{
 compute the estimates
 }
